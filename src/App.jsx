@@ -56,8 +56,8 @@ async function saveApp(d) { try{await window.storage.set(SK,JSON.stringify(d));}
 const today=()=>new Date().toISOString().slice(0,10);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 
-// ── Google Sheets API ─────────────────────────────────────────────
-const GS_API = "https://script.google.com/macros/s/AKfycbyxh1ZZhMratAZoUojK9BHWcX5YRsotzAErHLA0zJ7NCE8uGrOI9xVSMtqAqPvbt0vusQ/exec";
+// ── Google Sheets API（透過 Vercel 代理，解決 CORS）────────────────
+const GS_API = "/api/sheets";
 
 async function gsGet(sheet) {
   try {
