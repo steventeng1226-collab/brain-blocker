@@ -156,20 +156,21 @@ async function saveApp(d) { try{await window.storage.set(SK,JSON.stringify(d));}
 const today=()=>new Date().toISOString().slice(0,10);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 
-// ── Google Sheets 寫入（fire-and-forget，no-cors 繞過 CORS）──────────
+// ── Google Sheets 寫入（GET + URL params，繞過 CORS preflight）──────
 const GS_DIRECT = "https://script.google.com/macros/s/AKfycbyxh1ZZhMratAZoUojK9BHWcX5YRsotzAErHLA0zJ7NCE8uGrOI9xVSMtqAqPvbt0vusQ/exec";
 
 async function gsPost(sheet, row) {
-  // 使用 no-cors 模式：不會拿到回應，但資料會寫入 Sheets
   try {
-    fetch(GS_DIRECT, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sheet, row }),
+    const params = new URLSearchParams({
+      action: "write",
+      sheet: sheet,
+      row: JSON.stringify(row),
     });
-    return true;
-  } catch { return false; }
+    fetch(`${GS_DIRECT}?${params.toString()}`, {
+      method: "GET",
+      mode: "no-cors",
+    });
+  } catch {}
 }
 
 // ── PWA Icons (SVG → dataURL) ─────────────────────────────────────
@@ -573,9 +574,9 @@ export default function App() {
             {recForTrig(trig?.id||"work").map(w=>(
               <button key={w.id} onClick={()=>{setSelW(w);setFlow("step2");}}
                 className={`wc2 ${selW?.id===w.id?"on":""}`}>
-                <div style={{fontSize:9,color:"var(--mt)",lineHeight:1.2}}>{w.cat}</div>
-                <div style={{fontSize:11,fontWeight:600,lineHeight:1.3}}>{w.title}</div>
-                {w.star&&<div style={{fontSize:10,color:"var(--g)"}}>{w.star}</div>}
+                <div className="wc-cat">{w.cat}</div>
+                <div className="wc-title">{w.title}</div>
+                {w.star&&<div className="wc-star">{w.star}</div>}
               </button>
             ))}
           </div>
@@ -812,8 +813,11 @@ nav{display:flex;border-bottom:1px solid var(--bd);background:var(--sur);positio
 .wc1{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:11px;cursor:default;transition:border-color .15s}
 .wc1.on{border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.06)}
 .wc1:hover{border-color:rgba(167,139,250,.3)}
-.wc2{background:var(--sur2);border:1px solid var(--bd);border-radius:9px;padding:7px;cursor:pointer;display:flex;flex-direction:column;gap:2px;width:90px;flex-shrink:0;text-align:left;transition:all .15s;font-family:var(--font)}
+.wc2{background:var(--sur2);border:1px solid var(--bd);border-radius:9px;padding:7px;cursor:pointer;display:flex;flex-direction:column;gap:2px;width:90px;flex-shrink:0;text-align:left;transition:all .15s;font-family:var(--font);color:var(--tx)}
 .wc2:hover,.wc2.on{border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.08)}
+.wc2 .wc-cat{font-size:9px;color:var(--mt);line-height:1.3}
+.wc2 .wc-title{font-size:11px;color:var(--tx);font-weight:600;line-height:1.3}
+.wc2 .wc-star{font-size:10px;color:var(--g)}
 .cat-badge{font-size:9px;color:var(--p);background:rgba(167,139,250,.1);border-radius:4px;padding:1px 5px;white-space:nowrap;flex-shrink:0}
 .pw{padding:9px;border:1px solid rgba(167,139,250,.4);border-radius:9px;background:rgba(167,139,250,.1);color:var(--p);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)}
 .add-a{width:100%;padding:11px;border:2px dashed rgba(245,158,11,.3);border-radius:11px;background:rgba(245,158,11,.06);color:var(--gd);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);margin-bottom:11px;transition:all .15s}
