@@ -156,21 +156,20 @@ async function saveApp(d) { try{await window.storage.set(SK,JSON.stringify(d));}
 const today=()=>new Date().toISOString().slice(0,10);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 
-// ── Google Sheets 寫入（GET + URL params，繞過 CORS preflight）──────
+// ── Google Sheets 寫入（Image 標籤法，最可靠的跨域方式）──────────
 const GS_DIRECT = "https://script.google.com/macros/s/AKfycbyxh1ZZhMratAZoUojK9BHWcX5YRsotzAErHLA0zJ7NCE8uGrOI9xVSMtqAqPvbt0vusQ/exec";
 
-async function gsPost(sheet, row) {
+function gsPost(sheet, row) {
   try {
     const params = new URLSearchParams({
       action: "write",
       sheet: sheet,
       row: JSON.stringify(row),
     });
-    fetch(`${GS_DIRECT}?${params.toString()}`, {
-      method: "GET",
-      mode: "no-cors",
-    });
-  } catch {}
+    // Image 標籤不受 CORS 限制，可跨域發送 GET 請求
+    const img = new window.Image();
+    img.src = `${GS_DIRECT}?${params.toString()}`;
+  } catch(e) {}
 }
 
 // ── PWA Icons (SVG → dataURL) ─────────────────────────────────────
