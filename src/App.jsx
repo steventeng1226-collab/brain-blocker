@@ -172,7 +172,25 @@ function gsPost(sheet, row) {
   } catch(e) {}
 }
 
-// ── PWA Icons (SVG → dataURL) ─────────────────────────────────────
+// ── Google Sheets 讀取智慧錦囊 ────────────────────────────────────
+async function gsGetWisdom() {
+  try {
+    const params = new URLSearchParams({ action: "read", sheet: "Wisdom_DB" });
+    const res = await fetch(`${GS_DIRECT}?${params.toString()}`);
+    const json = await res.json();
+    if (json.data && json.data.length > 0) {
+      return json.data.map((r, i) => ({
+        id: i,
+        cat: r["類別 Category"] || "",
+        title: r["標題 Title"] || "",
+        content: r["內容 Content"] || "",
+        star: r["靈魂標記 Star"] || "",
+        custom: false,
+      }));
+    }
+  } catch {}
+  return null;
+}
 const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="100" fill="#080d14"/><rect width="512" height="512" rx="100" fill="url(#g)"/><defs><radialGradient id="g" cx="30%" cy="20%"><stop offset="0%" stop-color="#00d4ff" stop-opacity=".25"/><stop offset="100%" stop-color="#080d14" stop-opacity="0"/></radialGradient></defs><polygon points="290,60 130,280 256,280 222,460 400,220 274,220" fill="#00d4ff" filter="drop-shadow(0 0 20px #00d4ff)"/></svg>`;
 const ICON_192 = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(ICON_SVG)))}`;
 const ICON_512 = ICON_192;
@@ -261,9 +279,14 @@ export default function App() {
   const [newAnch,setNewAnch]=useState("");
   const [newWT,setNewWT]=useState("");
   const [newWX,setNewWX]=useState("");
+  const [gsWisdom,setGsWisdom]=useState(null);
 
   useEffect(()=>{loadApp().then(setApp);},[]);
   useEffect(()=>{if(app)saveApp(app);},[app]);
+  // 從 Google Sheets 載入最新智慧錦囊（背景更新）
+  useEffect(()=>{
+    gsGetWisdom().then(data=>{ if(data&&data.length>0) setGsWisdom(data); });
+  },[]);
 
   // PWA: fullscreen + icons
   useEffect(()=>{
@@ -314,14 +337,17 @@ export default function App() {
     return ()=>URL.revokeObjectURL(url);
   },[]);
 
-  // 智慧錦囊：直接使用內建 200 條（含自定義）
+  // 智慧錦囊：優先用 Google Sheets 最新版，否則用內建 200 條
   const customLen = app?.customWisdom?.length ?? 0;
+  const gsLen = gsWisdom?.length ?? 0;
   const allWisdom = useMemo(()=>{
-    const base = WISDOM_SEED.map(([i,c,t,x,s])=>({id:i,cat:c,title:t,content:x,star:s,custom:false}));
+    const base = gsLen > 0
+      ? gsWisdom
+      : WISDOM_SEED.map(([i,c,t,x,s])=>({id:i,cat:c,title:t,content:x,star:s,custom:false}));
     if(!app) return base;
-    const custom = (app.customWisdom||[]).map((w,i)=>({...w,id:`c${i}`,custom:true}));
+    const custom=(app.customWisdom||[]).map((w,i)=>({...w,id:`c${i}`,custom:true}));
     return [...base,...custom];
-  },[customLen]); // eslint-disable-line
+  },[gsLen,customLen]); // eslint-disable-line
 
   // Filtered wisdom (stable deps)
   const filtWisdom = useMemo(()=>{
@@ -729,28 +755,28 @@ export default function App() {
 
         {topW.length>0&&<>
           <div className="sh">💡 <span>最常用智慧錦囊 Top5</span></div>
-          <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:20}}>
-            {topW.map((w,i)=><div key={i} className="wc1">
-              <div style={{display:"flex",gap:6,marginBottom:4}}>
-                <span className="cat-badge">{w.cat||"💡"}</span>
-                <span style={{fontSize:10,color:"var(--gd)",marginLeft:"auto"}}>使用{w.cnt}次</span>
+          <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:16}}>
+            {topW.map((w,i)=><div key={i} className="wc1" style={{padding:"14px 16px"}}>
+              <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"center"}}>
+                <span className="cat-badge" style={{fontSize:11,padding:"2px 8px"}}>{w.cat||"💡"}</span>
+                <span style={{fontSize:12,color:"var(--gd)",marginLeft:"auto",fontWeight:600}}>使用 {w.cnt} 次</span>
               </div>
-              <div style={{fontSize:12,fontWeight:700,marginBottom:2}}>{w.title}</div>
-              <div style={{fontSize:11,color:"#94a3b8",lineHeight:1.5}}>{w.content}</div>
+              <div style={{fontSize:16,fontWeight:700,marginBottom:6,color:"var(--tx)"}}>{w.title}</div>
+              <div style={{fontSize:13,color:"#94a3b8",lineHeight:1.7}}>{w.content}</div>
             </div>)}
           </div>
         </>}
 
         <div className="sh">⚖️ <span>正負能量對比</span></div>
-        <div style={{display:"flex",gap:8,marginBottom:8}}>
-          {[["var(--c)","rgba(0,212,255,.07)","rgba(0,212,255,.25)",totalBlocked,"負面阻斷"],["var(--gd)","rgba(245,158,11,.07)","rgba(245,158,11,.25)",app.assets.length,"正面資產"]].map(([tc,bg,bc,n,lb])=>(
-            <div key={lb} style={{flex:1,background:bg,border:`1px solid ${bc}`,borderRadius:12,padding:"12px",textAlign:"center"}}>
-              <div style={{fontSize:34,fontWeight:700,fontFamily:"monospace",color:tc}}>{n}</div>
-              <div style={{fontSize:10,color:"var(--mt)",marginTop:2}}>{lb}</div>
+        <div style={{display:"flex",gap:8,marginBottom:6}}>
+          {[["var(--c)","rgba(0,212,255,.07)","rgba(0,212,255,.2)",totalBlocked,"負面阻斷"],["var(--gd)","rgba(245,158,11,.07)","rgba(245,158,11,.2)",app.assets.length,"正面資產"]].map(([tc,bg,bc,n,lb])=>(
+            <div key={lb} style={{flex:1,background:bg,border:`1px solid ${bc}`,borderRadius:10,padding:"8px",textAlign:"center"}}>
+              <div style={{fontSize:22,fontWeight:700,fontFamily:"monospace",color:tc}}>{n}</div>
+              <div style={{fontSize:10,color:"var(--mt)",marginTop:1}}>{lb}</div>
             </div>
           ))}
         </div>
-        <div style={{height:8,background:"rgba(255,255,255,.07)",borderRadius:4,overflow:"hidden"}}>
+        <div style={{height:6,background:"rgba(255,255,255,.07)",borderRadius:4,overflow:"hidden"}}>
           <div style={{width:`${Math.min(totalBlocked/(totalBlocked+app.assets.length||1)*100,100)}%`,height:"100%",background:"var(--c)",borderRadius:4,transition:"width .6s"}}/>
         </div>
         <p style={{fontSize:10,color:"var(--mt)",textAlign:"center",marginTop:4}}>目標：正面資產累積 ≥ 阻斷次數</p>
@@ -792,8 +818,8 @@ nav{display:flex;border-bottom:1px solid var(--bd);background:var(--sur);positio
 @keyframes su{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .tb-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid var(--bd);border-radius:20px;padding:3px 10px;font-size:12px;align-self:flex-start}
 .fl{font-size:10px;color:var(--mt);margin-bottom:5px}
-.chip{background:rgba(255,255,255,.04);border:1px solid var(--bd);border-radius:20px;padding:3px 8px;font-size:10px;color:var(--mt);cursor:pointer;font-family:var(--font);transition:all .15s}
-.chip.on{background:rgba(167,139,250,.15);border-color:rgba(167,139,250,.5);color:var(--p)}
+.chip{background:rgba(167,139,250,.12);border:1px solid rgba(167,139,250,.35);border-radius:20px;padding:6px 12px;font-size:13px;color:#c4b5fd;cursor:pointer;font-family:var(--font);transition:all .15s;font-weight:500}
+.chip.on{background:rgba(167,139,250,.3);border-color:rgba(167,139,250,.8);color:#fff;font-weight:700;box-shadow:0 0 10px rgba(167,139,250,.3)}
 .sb2{background:rgba(255,255,255,.03);border:1px solid;border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:7px}
 .eb{background:rgba(255,255,255,.05);border:1px solid var(--bd);border-radius:7px;padding:5px 10px;color:var(--tx);font-size:11px;cursor:pointer;font-family:var(--font);align-self:flex-start}
 .nb2{padding:11px;border:none;border-radius:11px;color:#080d14;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--font)}
