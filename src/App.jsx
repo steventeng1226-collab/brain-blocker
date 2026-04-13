@@ -131,6 +131,7 @@ const TRIGGERS = [
   {id:"value",emoji:"💎",label:"失去價值/沒有存在感"},
   {id:"family",emoji:"🏠",label:"家庭生活"},
   {id:"routine",emoji:"🌀",label:"沒有規律生活"},
+  {id:"social",emoji:"🍺",label:"社交活動/飲酒"},
 ];
 const STATE_TAGS = ["完美主義陷阱","防衛心理","自我價值疑慮","認知扭曲：讀心術","自我否定","災難預測"];
 const ASSET_CATS = [
@@ -377,7 +378,7 @@ export default function App() {
   function startFlow(t) {
     setTrig(t); setStateTag(""); setStars(0); setSelW(null);
     setAIdx(Math.floor(Math.random()*app.actions.length));
-    setBreath(false); setFlow("step1"); setTab("blocker");
+    setBreath(false); setFlow("step1");
   }
   function completeBlock() {
     const rec={id:uid(),date:today(),trigger:trig.id,stateTag,stars,wisdomId:selW?.id??null,blocked:true};
@@ -480,9 +481,9 @@ export default function App() {
 
       {/* Nav */}
       <nav>
-        {[["scan","📡","巡檢"],["blocker","⚡","阻斷"],["wisdom","💡","錦囊"],["assets","🏆","資產"],["stats","📊","分析"]].map(([id,ic,lb])=>(
-          <button key={id} className={`nb ${tab===id?"on":""}`} onClick={()=>{setTab(id);if(id!=="blocker")reset();}}>
-            <span style={{fontSize:16}}>{ic}</span><span>{lb}</span>
+        {[["scan","📡","巡檢"],["wisdom","💡","錦囊"],["assets","🏆","資產"],["stats","📊","分析"]].map(([id,ic,lb])=>(
+          <button key={id} className={`nb ${tab===id?"on":""}`} onClick={()=>{setTab(id);reset();}}>
+            <span style={{fontSize:18}}>{ic}</span><span>{lb}</span>
           </button>
         ))}
       </nav>
@@ -490,14 +491,14 @@ export default function App() {
       {/* ═ 情緒巡檢 ═ */}
       {tab==="scan" && <div className="panel">
         <div className="sh">📡 <span>現在哪種情緒觸發了你？</span></div>
-        <p style={{fontSize:11,color:"#64748b",marginBottom:10}}>選擇情境 → 自動推薦智慧錦囊 → 啟動三層阻斷</p>
+        <p style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>選擇情境 → 自動推薦智慧錦囊 → 啟動三層阻斷</p>
         <div className="tg">
           {TRIGGERS.map(t=>{
             const cnt=app.records.filter(r=>r.trigger===t.id).length;
             return <button key={t.id} className="tb" onClick={()=>startFlow(t)}>
-              <span style={{fontSize:16}}>{t.emoji}</span>
-              <div><div style={{fontSize:11,color:"var(--tx)",lineHeight:1.3}}>{t.label}</div>
-                {cnt>0&&<div style={{fontSize:9,color:"var(--mt)"}}>已觸發{cnt}次</div>}
+              <span style={{fontSize:22}}>{t.emoji}</span>
+              <div><div style={{fontSize:14,fontWeight:600,color:"var(--tx)",lineHeight:1.4}}>{t.label}</div>
+                {cnt>0&&<div style={{fontSize:10,color:"var(--mt)"}}>已觸發{cnt}次</div>}
               </div>
             </button>;
           })}
@@ -519,17 +520,9 @@ export default function App() {
         </>}
       </div>}
 
-      {/* ═ 阻斷程序 ═ */}
-      {tab==="blocker" && <div className="panel">
-        {flow==="idle"&&<div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"36px 0",gap:16}}>
-          <div className="sos-ring">
-            <button className="sos-btn" onClick={()=>setTab("scan")}>
-              <span style={{fontSize:32}}>⚡</span>
-              <span style={{fontSize:11,color:"var(--c)",fontWeight:600}}>前往巡檢</span>
-            </button>
-          </div>
-          <p style={{textAlign:"center",color:"var(--mt)",fontSize:12,lineHeight:1.7}}>先在「情緒巡檢」選擇情境<br/>系統會自動推薦對應智慧錦囊</p>
-        </div>}
+      {/* ═ 阻斷程序（嵌入，不需要獨立 Tab）═ */}
+      {tab==="scan" && flow!=="idle" && <div className="panel" style={{paddingTop:0}}>
+        {flow==="idle"&&null}
 
         {["step1","step2","step3"].includes(flow)&&(()=>{
           const step=flow==="step1"?1:flow==="step2"?2:3;
@@ -599,20 +592,24 @@ export default function App() {
             <button className="sb" style={{padding:"7px 12px"}} onClick={()=>setFlow("step2")}>← 返回</button>
             <span style={{fontSize:12,fontWeight:600}}>為「{trig?.label}」推薦的錦囊</span>
           </div>
-          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:4}}>
+          {/* 推薦錦囊：垂直全列 */}
+          <div style={{display:"flex",flexDirection:"column",gap:7}}>
             {recForTrig(trig?.id||"work").map(w=>(
-              <button key={w.id} onClick={()=>{setSelW(w);setFlow("step2");}}
-                className={`wc2 ${selW?.id===w.id?"on":""}`}>
-                <div className="wc-cat">{w.cat}</div>
-                <div className="wc-title">{w.title}</div>
-                {w.star&&<div className="wc-star">{w.star}</div>}
-              </button>
+              <div key={w.id} className={`wc1 ${selW?.id===w.id?"on":""}`}
+                onClick={()=>{setSelW(w);setFlow("step2");}}>
+                <div style={{display:"flex",gap:6,marginBottom:4,alignItems:"center"}}>
+                  <span className="cat-badge">{w.cat||"💡"}</span>
+                  {w.star&&<span style={{fontSize:11,color:"var(--g)",marginLeft:"auto"}}>{w.star}</span>}
+                </div>
+                <div style={{fontSize:14,fontWeight:700,marginBottom:3,color:"var(--tx)"}}>{w.title}</div>
+                <div style={{fontSize:12,color:"#94a3b8",lineHeight:1.5}}>{w.content}</div>
+              </div>
             ))}
           </div>
           <div className="sbar">
             🔍 <input placeholder="搜尋全部錦囊…" value={wSearch} onChange={e=>setWSearch(e.target.value)}/>
           </div>
-          {wSearch&&<div style={{maxHeight:280,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
+          {wSearch&&<div style={{display:"flex",flexDirection:"column",gap:6}}>
             {filtWisdom.slice(0,20).map(w=>(
               <div key={w.id} className={`wc1 ${selW?.id===w.id?"on":""}`}
                 onClick={()=>{setSelW(w);setFlow("step2");}}>
@@ -642,14 +639,17 @@ export default function App() {
 
       {/* ═ 智慧錦囊 ═ */}
       {tab==="wisdom"&&<div className="panel">
-        <div style={{textAlign:"center",background:"var(--sur)",border:"1px solid var(--bd)",borderRadius:12,padding:"14px",marginBottom:12}}>
-          <div style={{fontSize:48,fontWeight:700,fontFamily:"monospace",color:"var(--p)",textShadow:"0 0 20px rgba(167,139,250,.4)"}}>{allWisdom.length}</div>
-          <div style={{fontSize:11,color:"var(--mt)"}}>智慧錦囊總數 · 內建{WISDOM_SEED.length}條 + 自定義{customLen}條</div>
+        {/* 新增自訂錦囊 - 移到最上方 */}
+        <div style={{background:"var(--sur)",border:"1px solid rgba(167,139,250,.3)",borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8,marginBottom:12}}>
+          <div className="sh">➕ <span>新增自訂錦囊</span></div>
+          <input className="fi" placeholder="標題" value={newWT} onChange={e=>setNewWT(e.target.value)}/>
+          <textarea className="fi" style={{height:64,resize:"none"}} placeholder="錦囊內容…" value={newWX} onChange={e=>setNewWX(e.target.value)}/>
+          <button className="pw" onClick={addCustomW}>新增錦囊</button>
         </div>
         <div className="sbar"><span>🔍</span> <input placeholder="搜尋標題、內容…" value={wSearch} onChange={e=>setWSearch(e.target.value)}/></div>
-        <div className="fs">
+        <div className="fs" style={{flexWrap:"wrap",overflowX:"visible"}}>
           <button className={`fp ${wCat==="all"?"on":""}`} onClick={()=>setWCat("all")}>全部</button>
-          {cats.slice(0,12).map(c=><button key={c} className={`fp ${wCat===c?"on":""}`} onClick={()=>setWCat(c)}>{c}</button>)}
+          {cats.map(c=><button key={c} className={`fp ${wCat===c?"on":""}`} onClick={()=>setWCat(c)}>{c}</button>)}
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:7,marginBottom:14}}>
           {filtWisdom.slice(0,40).map(w=>(
@@ -664,12 +664,6 @@ export default function App() {
             </div>
           ))}
           {filtWisdom.length>40&&<p style={{textAlign:"center",fontSize:11,color:"var(--mt)"}}>顯示前40條，請搜尋縮小範圍</p>}
-        </div>
-        <div style={{background:"var(--sur)",border:"1px solid var(--bd)",borderRadius:12,padding:14,display:"flex",flexDirection:"column",gap:8}}>
-          <div className="sh">➕ <span>新增自訂錦囊</span></div>
-          <input className="fi" placeholder="標題" value={newWT} onChange={e=>setNewWT(e.target.value)}/>
-          <textarea className="fi" style={{height:64,resize:"none"}} placeholder="錦囊內容…" value={newWX} onChange={e=>setNewWX(e.target.value)}/>
-          <button className="pw" onClick={addCustomW}>新增錦囊</button>
         </div>
       </div>}
 
@@ -809,7 +803,7 @@ nav{display:flex;border-bottom:1px solid var(--bd);background:var(--sur);positio
 .panel{padding:13px;min-height:calc(100vh - 100px)}
 .sh{display:flex;gap:7px;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700}
 .tg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:4px}
-.tb{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:9px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;font-family:var(--font);text-align:left}
+.tb{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:13px 10px;cursor:pointer;display:flex;align-items:center;gap:9px;transition:all .15s;font-family:var(--font);text-align:left;min-height:60px}
 .tb:hover{border-color:var(--c);background:rgba(0,212,255,.06)}.tb:active{transform:scale(.97)}
 .ri{display:flex;align-items:center;gap:9px;background:var(--sur);border:1px solid var(--bd);border-radius:9px;padding:8px 11px;margin-bottom:5px}
 .badge{font-size:10px;color:var(--mt);background:rgba(255,255,255,.05);border-radius:4px;padding:2px 5px;white-space:nowrap}
@@ -835,10 +829,9 @@ nav{display:flex;border-bottom:1px solid var(--bd);background:var(--sur);positio
 .sbar{display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.04);border:1px solid var(--bd);border-radius:9px;padding:7px 11px;margin-bottom:9px}
 .sbar input{flex:1;background:none;border:none;color:var(--tx);font-family:var(--font);font-size:12px;outline:none}
 .sbar input::placeholder{color:var(--mt)}
-.fs{display:flex;gap:5px;overflow-x:auto;padding-bottom:8px;margin-bottom:9px}
-.fs::-webkit-scrollbar{display:none}
-.fp{flex-shrink:0;background:rgba(255,255,255,.04);border:1px solid var(--bd);border-radius:20px;padding:3px 9px;font-size:10px;color:var(--mt);cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .15s}
-.fp.on{background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.4);color:var(--p)}
+.fs{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:8px;margin-bottom:9px}
+.fp{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);border-radius:20px;padding:4px 11px;font-size:11px;color:#cbd5e1;cursor:pointer;font-family:var(--font);white-space:nowrap;transition:all .15s}
+.fp.on{background:rgba(167,139,250,.2);border-color:rgba(167,139,250,.6);color:#e9d5ff;font-weight:600}
 .wc1{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:11px;cursor:default;transition:border-color .15s}
 .wc1.on{border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.06)}
 .wc1:hover{border-color:rgba(167,139,250,.3)}
@@ -847,7 +840,7 @@ nav{display:flex;border-bottom:1px solid var(--bd);background:var(--sur);positio
 .wc2 .wc-cat{font-size:9px;color:var(--mt);line-height:1.3}
 .wc2 .wc-title{font-size:11px;color:var(--tx);font-weight:600;line-height:1.3}
 .wc2 .wc-star{font-size:10px;color:var(--g)}
-.cat-badge{font-size:9px;color:var(--p);background:rgba(167,139,250,.1);border-radius:4px;padding:1px 5px;white-space:nowrap;flex-shrink:0}
+.cat-badge{font-size:10px;color:#f0e6ff;background:rgba(167,139,250,.3);border-radius:5px;padding:2px 7px;white-space:nowrap;flex-shrink:0;font-weight:500}
 .pw{padding:9px;border:1px solid rgba(167,139,250,.4);border-radius:9px;background:rgba(167,139,250,.1);color:var(--p);font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)}
 .add-a{width:100%;padding:11px;border:2px dashed rgba(245,158,11,.3);border-radius:11px;background:rgba(245,158,11,.06);color:var(--gd);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);margin-bottom:11px;transition:all .15s}
 .ac{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:11px;margin-bottom:7px}
