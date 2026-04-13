@@ -149,10 +149,14 @@ const DEFAULT = {
 };
 
 async function loadApp() {
-  try { const r=await window.storage.get(SK); return r?JSON.parse(r.value):DEFAULT; }
-  catch { return DEFAULT; }
+  try {
+    const raw = localStorage.getItem(SK);
+    return raw ? JSON.parse(raw) : DEFAULT;
+  } catch { return DEFAULT; }
 }
-async function saveApp(d) { try{await window.storage.set(SK,JSON.stringify(d));}catch{} }
+async function saveApp(d) {
+  try { localStorage.setItem(SK, JSON.stringify(d)); } catch {}
+}
 const today=()=>new Date().toISOString().slice(0,10);
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
 
