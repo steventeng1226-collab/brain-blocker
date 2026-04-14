@@ -379,6 +379,7 @@ export default function App() {
     setTrig(t); setStateTag(""); setStars(0); setSelW(null);
     setAIdx(Math.floor(Math.random()*app.actions.length));
     setBreath(false); setFlow("step1");
+    setTab("block");
   }
   function completeBlock() {
     const rec={id:uid(),date:today(),trigger:trig.id,stateTag,stars,wisdomId:selW?.id??null,blocked:true};
@@ -481,8 +482,8 @@ export default function App() {
 
       {/* Nav */}
       <nav>
-        {[["scan","📡","巡檢"],["wisdom","💡","錦囊"],["assets","🏆","資產"],["stats","📊","分析"]].map(([id,ic,lb])=>(
-          <button key={id} className={`nb ${tab===id?"on":""}`} onClick={()=>{setTab(id);reset();}}>
+        {[["scan","📡","巡檢"],["block","⚡","阻斷"],["wisdom","💡","錦囊"],["assets","🏆","資產"],["stats","📊","分析"]].map(([id,ic,lb])=>(
+          <button key={id} className={`nb ${tab===id?"on":""}`} onClick={()=>{setTab(id);if(id!=="block")reset();}}>
             <span style={{fontSize:18}}>{ic}</span><span>{lb}</span>
           </button>
         ))}
@@ -491,7 +492,7 @@ export default function App() {
       {/* ═ 情緒巡檢 ═ */}
       {tab==="scan" && <div className="panel">
         <div className="sh">📡 <span>現在哪種情緒觸發了你？</span></div>
-        <p style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>選擇情境 → 自動推薦智慧錦囊 → 啟動三層阻斷</p>
+        <p style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>選擇情境 → 切換至⚡阻斷流程 → 完成三層阻斷</p>
         <div className="tg">
           {TRIGGERS.map(t=>{
             const cnt=app.records.filter(r=>r.trigger===t.id).length;
@@ -520,9 +521,23 @@ export default function App() {
         </>}
       </div>}
 
-      {/* ═ 阻斷程序（嵌入，不需要獨立 Tab）═ */}
-      {tab==="scan" && flow!=="idle" && <div className="panel" style={{paddingTop:0}}>
-        {flow==="idle"&&null}
+      {/* ═ 阻斷流程 Tab ═ */}
+      {tab==="block" && <div className="panel" style={flow!=="idle"?{paddingTop:0}:{}}>
+        {flow==="idle" && <>
+          <div className="sh">⚡ <span>選擇情境，啟動三層阻斷</span></div>
+          <p style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>選擇觸發情境 → 直接進入阻斷流程</p>
+          <div className="tg">
+            {TRIGGERS.map(t=>{
+              const cnt=app.records.filter(r=>r.trigger===t.id).length;
+              return <button key={t.id} className="tb" onClick={()=>startFlow(t)}>
+                <span style={{fontSize:22}}>{t.emoji}</span>
+                <div><div style={{fontSize:14,fontWeight:600,color:"var(--tx)",lineHeight:1.4}}>{t.label}</div>
+                  {cnt>0&&<div style={{fontSize:10,color:"var(--mt)"}}>已觸發{cnt}次</div>}
+                </div>
+              </button>;
+            })}
+          </div>
+        </>}
 
         {["step1","step2","step3"].includes(flow)&&(()=>{
           const step=flow==="step1"?1:flow==="step2"?2:3;
