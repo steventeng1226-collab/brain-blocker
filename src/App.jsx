@@ -133,7 +133,7 @@ const TRIGGERS = [
   {id:"routine",emoji:"🌀",label:"沒有規律生活"},
   {id:"social",emoji:"🍺",label:"社交活動/飲酒"},
 ];
-const STATE_TAGS = ["完美主義陷阱","防衛心理","自我價值疑慮","認知扭曲：讀心術","自我否定","災難預測"];
+const STATE_TAGS = ["完美主義陷阱","防衛心理","自我價值疑慮","認知扭曲：讀心術","自我否定","災難預測","預警性焦慮","補償性消耗","向上比較","「應該」強迫症","過度承擔"];
 const ASSET_CATS = [
   {id:"tech",emoji:"💻",label:"技術突破"},{id:"english",emoji:"🇬🇧",label:"英文進步"},
   {id:"manage",emoji:"🤝",label:"管理心法"},{id:"workout",emoji:"🏋️",label:"身體鍛鍊"},
@@ -144,7 +144,7 @@ const ASSET_CATS = [
 ];
 
 const DEFAULT = {
-  actions:["大力拍手一次","4-7-8深呼吸","做10下深蹲","用冷水洗臉","大聲說「停！換台」"],
+  actions:["大力拍手一次","4-7-8深呼吸","做10下深蹲","冰水震撼","大聲說「停！換台」","跳繩30下","5-4-3-2-1感官接地法","肌肉極限壓力","對位拍打","嗅覺閃擊","金雞獨立"],
   anchor:"想像最佳狀態的自己，雙手舉高30秒",
   records:[],assets:[],customWisdom:[],
 };
@@ -379,6 +379,7 @@ export default function App() {
     setTrig(t); setStateTag(""); setStars(0); setSelW(null);
     setAIdx(Math.floor(Math.random()*app.actions.length));
     setBreath(false); setFlow("step1");
+    setTab("block");
   }
   function completeBlock() {
     const rec={id:uid(),date:today(),trigger:trig.id,stateTag,stars,wisdomId:selW?.id??null,blocked:true};
@@ -481,8 +482,8 @@ export default function App() {
 
       {/* Nav */}
       <nav>
-        {[["scan","📡","巡檢"],["wisdom","💡","錦囊"],["assets","🏆","資產"],["stats","📊","分析"]].map(([id,ic,lb])=>(
-          <button key={id} className={`nb ${tab===id?"on":""}`} onClick={()=>{setTab(id);reset();}}>
+        {[["scan","📡","巡檢"],["block","⚡","阻斷"],["wisdom","💡","錦囊"],["assets","🏆","資產"],["stats","📊","分析"]].map(([id,ic,lb])=>(
+          <button key={id} className={`nb ${tab===id?"on":""}`} onClick={()=>{setTab(id);if(id!=="block")reset();}}>
             <span style={{fontSize:18}}>{ic}</span><span>{lb}</span>
           </button>
         ))}
@@ -491,7 +492,7 @@ export default function App() {
       {/* ═ 情緒巡檢 ═ */}
       {tab==="scan" && <div className="panel">
         <div className="sh">📡 <span>現在哪種情緒觸發了你？</span></div>
-        <p style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>選擇情境 → 自動推薦智慧錦囊 → 啟動三層阻斷</p>
+        <p style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>選擇情境 → 切換至⚡阻斷流程 → 完成三層阻斷</p>
         <div className="tg">
           {TRIGGERS.map(t=>{
             const cnt=app.records.filter(r=>r.trigger===t.id).length;
@@ -520,9 +521,23 @@ export default function App() {
         </>}
       </div>}
 
-      {/* ═ 阻斷程序（嵌入，不需要獨立 Tab）═ */}
-      {tab==="scan" && flow!=="idle" && <div className="panel" style={{paddingTop:0}}>
-        {flow==="idle"&&null}
+      {/* ═ 阻斷流程 Tab ═ */}
+      {tab==="block" && <div className="panel" style={flow!=="idle"?{paddingTop:0}:{}}>
+        {flow==="idle" && <>
+          <div className="sh">⚡ <span>選擇情境，啟動三層阻斷</span></div>
+          <p style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>選擇觸發情境 → 直接進入阻斷流程</p>
+          <div className="tg">
+            {TRIGGERS.map(t=>{
+              const cnt=app.records.filter(r=>r.trigger===t.id).length;
+              return <button key={t.id} className="tb" onClick={()=>startFlow(t)}>
+                <span style={{fontSize:22}}>{t.emoji}</span>
+                <div><div style={{fontSize:14,fontWeight:600,color:"var(--tx)",lineHeight:1.4}}>{t.label}</div>
+                  {cnt>0&&<div style={{fontSize:10,color:"var(--mt)"}}>已觸發{cnt}次</div>}
+                </div>
+              </button>;
+            })}
+          </div>
+        </>}
 
         {["step1","step2","step3"].includes(flow)&&(()=>{
           const step=flow==="step1"?1:flow==="step2"?2:3;
@@ -803,7 +818,7 @@ nav{display:flex;border-bottom:1px solid var(--bd);background:var(--sur);positio
 .panel{padding:13px;min-height:calc(100vh - 100px)}
 .sh{display:flex;gap:7px;align-items:center;margin-bottom:8px;font-size:13px;font-weight:700}
 .tg{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:4px}
-.tb{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:13px 10px;cursor:pointer;display:flex;align-items:center;gap:9px;transition:all .15s;font-family:var(--font);text-align:left;min-height:60px}
+.tb{background:var(--sur);border:1px solid var(--bd);border-radius:11px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;gap:9px;transition:all .15s;font-family:var(--font);text-align:left;min-height:48px}
 .tb:hover{border-color:var(--c);background:rgba(0,212,255,.06)}.tb:active{transform:scale(.97)}
 .ri{display:flex;align-items:center;gap:9px;background:var(--sur);border:1px solid var(--bd);border-radius:9px;padding:8px 11px;margin-bottom:5px}
 .badge{font-size:10px;color:var(--mt);background:rgba(255,255,255,.05);border-radius:4px;padding:2px 5px;white-space:nowrap}
