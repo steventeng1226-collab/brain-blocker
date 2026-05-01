@@ -285,6 +285,14 @@ export default function App() {
   const [newWT,setNewWT]=useState("");
   const [newWX,setNewWX]=useState("");
   const [gsWisdom,setGsWisdom]=useState(null);
+  // AI 阻斷
+  const [aiInput,setAiInput]=useState("");
+  const [aiPhrases,setAiPhrases]=useState([]);
+  const [aiLoading,setAiLoading]=useState(false);
+  const [aiError,setAiError]=useState("");
+  const [aiSelIdx,setAiSelIdx]=useState(null);
+  // 備份還原
+  const [restoreMsg,setRestoreMsg]=useState("");
 
   useEffect(()=>{loadApp().then(setApp);},[]);
   useEffect(()=>{if(app)saveApp(app);},[app]);
@@ -382,7 +390,7 @@ export default function App() {
     setTab("block");
   }
   function completeBlock() {
-    const rec={id:uid(),date:today(),trigger:trig.id,stateTag,stars,wisdomId:selW?.id??null,blocked:true};
+    const rec={id:uid(),date:today(),trigger:trig.id,stateTag,stars,wisdomId:selW?.id??null,blocked:true,aiInput:aiInput.trim()||""};
     // 本地儲存
     setApp(d=>({...d,records:[...d.records,rec]}));
     setFlow("done");
@@ -399,10 +407,11 @@ export default function App() {
       "執行良率 Stars": rec.stars,
       "是否完成阻斷 Blocked": "TRUE",
       "備註 Note": "",
+      "AI心情輸入 AI_Input": aiInput.trim()||"",
     });
   }
   function logOnly() {
-    const rec={id:uid(),date:today(),trigger:trig.id,stateTag,stars:0,wisdomId:null,blocked:false};
+    const rec={id:uid(),date:today(),trigger:trig.id,stateTag,stars:0,wisdomId:null,blocked:false,aiInput:aiInput.trim()||""};
     setApp(d=>({...d,records:[...d.records,rec]}));
     gsPost("Blocker_Records", {
       "Record_ID": rec.id,
@@ -415,10 +424,87 @@ export default function App() {
       "執行良率 Stars": "0",
       "是否完成阻斷 Blocked": "FALSE",
       "備註 Note": "僅記錄",
+      "AI心情輸入 AI_Input": aiInput.trim()||"",
     });
     setFlow("idle");
   }
   function reset(){setFlow("idle");setBreath(false);setSelW(null);}
+
+  async function callAI() {
+    if(!aiInput.trim()) return;
+    setAiLoading(true); setAiError(""); setAiPhrases([]); setAiSelIdx(null);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          model:"claude-sonnet-4-20250514",
+          max_tokens:1000,
+          messages:[{role:"user", content:`
+你是一位認知行為治療師，專門幫助人阻斷負面情緒迴路。
+
+用戶當下感受：「${aiInput.trim()}」
+
+請生成「恰好5句」個人化阻斷語，幫助用戶在10秒內重新框架這個情緒。
+每句需採用不同風格，以下5種各用一次：
+1. 理性拆解（分析事件本質，與自我價值分離）
+2. 換框思考（從不同角度重新詮釋）
+3. 生理錨定（提醒回到身體感知、呼吸當下）
+4. 曠野視角（拉大時間或空間尺度看這件事）
+5. 行動導向（聚焦在下一個可控的行動）
+
+格式要求：
+- 只輸出JSON陣列，不要任何說明文字或markdown
+- 每句15-40字的中文，直接對用戶說話（用「你」）
+- 格式：[{"style":"理性拆解","text":"..."},{"style":"換框思考","text":"..."},{"style":"生理錨定","text":"..."},{"style":"曠野視角","text":"..."},{"style":"行動導向","text":"..."}]
+`}]
+        })
+      });
+      const data = await res.json();
+      const raw = data.content?.find(b=>b.type==="text")?.text || "[]";
+      const clean = raw.replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(clean);
+      setAiPhrases(parsed);
+    } catch(e) {
+      setAiError("AI 連線失敗，請再試一次");
+    }
+    setAiLoading(false);
+  }
+
+  // ── 備份 / 還原 ──────────────────────────────────────────
+  function backupData() {
+    const payload = {
+      version: "v9",
+      exportedAt: new Date().toLocaleString("zh-TW"),
+      data: app,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `brain-blocker-backup-${today()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function restoreData(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        const restored = parsed.data || parsed;
+        if (!restored.records || !restored.assets) throw new Error("格式錯誤");
+        setApp({...DEFAULT, ...restored});
+        setRestoreMsg(`✅ 還原成功！共 ${restored.records.length} 筆記錄、${restored.assets.length} 筆資產`);
+      } catch {
+        setRestoreMsg("❌ 檔案格式錯誤，請使用正確的備份檔");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  }
 
   function saveAsset(rec){
     const cat = ASSET_CATS.find(c=>c.id===rec.cat);
@@ -524,6 +610,50 @@ export default function App() {
       {/* ═ 阻斷流程 Tab ═ */}
       {tab==="block" && <div className="panel" style={flow!=="idle"?{paddingTop:0}:{}}>
         {flow==="idle" && <>
+          {/* AI 自由輸入區塊 */}
+          <div style={{background:"rgba(0,212,255,.04)",border:"1px solid rgba(0,212,255,.2)",borderRadius:13,padding:14,marginBottom:14,display:"flex",flexDirection:"column",gap:9}}>
+            <div style={{fontSize:12,fontWeight:700,color:"var(--c)",display:"flex",gap:6,alignItems:"center"}}>
+              <span>✍️</span><span>自由輸入當下感受，AI 即時阻斷</span>
+            </div>
+            <textarea
+              style={{background:"rgba(255,255,255,.04)",border:"1px solid var(--bd)",borderRadius:9,padding:"10px 12px",color:"var(--tx)",fontSize:13,lineHeight:1.6,resize:"none",height:72,outline:"none",fontFamily:"var(--font)"}}
+              placeholder="例如：被主管當眾批評，覺得很羞愧，腦袋空白…"
+              value={aiInput}
+              onChange={e=>setAiInput(e.target.value)}
+            />
+            <button
+              onClick={callAI}
+              disabled={aiLoading||!aiInput.trim()}
+              style={{padding:"10px",border:"none",borderRadius:10,background:aiLoading||!aiInput.trim()?"rgba(0,212,255,.2)":"var(--c)",color:"#080d14",fontSize:13,fontWeight:700,cursor:aiLoading||!aiInput.trim()?"default":"pointer",fontFamily:"var(--font)",transition:"all .2s"}}
+            >
+              {aiLoading?"🤖 AI 分析中…":"🤖 AI 生成5句阻斷語"}
+            </button>
+            {aiError&&<div style={{fontSize:11,color:"#f87171"}}>{aiError}</div>}
+            {aiPhrases.length>0&&<div style={{display:"flex",flexDirection:"column",gap:7}}>
+              <div style={{fontSize:10,color:"var(--mt)"}}>👇 點選一句進入第2層認知重導</div>
+              {aiPhrases.map((p,i)=>(
+                <div
+                  key={i}
+                  onClick={()=>{
+                    const phrase={id:`ai-${i}`,cat:`🤖 ${p.style}`,title:p.text,content:p.text,star:"",custom:false};
+                    setAiSelIdx(i);
+                    setSelW(phrase);
+                    setTrig(TRIGGERS[0]);
+                    setStateTag("");setStars(0);
+                    setAIdx(Math.floor(Math.random()*app.actions.length));
+                    setBreath(false);
+                    setFlow("step2");
+                    setTab("block");
+                  }}
+                  style={{background:aiSelIdx===i?"rgba(0,212,255,.12)":"rgba(255,255,255,.03)",border:`1px solid ${aiSelIdx===i?"rgba(0,212,255,.5)":"rgba(0,212,255,.15)"}`,borderRadius:9,padding:"10px 13px",cursor:"pointer",transition:"all .15s"}}
+                >
+                  <div style={{fontSize:9,color:"var(--c)",marginBottom:3,fontFamily:"monospace"}}>{p.style}</div>
+                  <div style={{fontSize:13,color:"var(--tx)",lineHeight:1.6}}>{p.text}</div>
+                </div>
+              ))}
+            </div>}
+          </div>
+
           <div className="sh">⚡ <span>選擇情境，啟動三層阻斷</span></div>
           <p style={{fontSize:12,color:"#94a3b8",marginBottom:12}}>選擇觸發情境 → 直接進入阻斷流程</p>
           <div className="tg">
@@ -780,6 +910,25 @@ export default function App() {
           </div>
         </>}
 
+        {/* AI 心情紀錄 */}
+        {app.records.filter(r=>r.aiInput).length>0&&<>
+          <div className="sh" style={{marginTop:4}}>🤖 <span>AI 阻斷心情紀錄</span></div>
+          <p style={{fontSize:11,color:"var(--mt)",marginBottom:10}}>每一筆都是你真實情緒的快照，持續累積後可分析觸發模式</p>
+          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
+            {[...app.records.filter(r=>r.aiInput)].reverse().slice(0,10).map(r=>{
+              const t=TRIGGERS.find(x=>x.id===r.trigger);
+              return <div key={r.id} style={{background:"rgba(0,212,255,.04)",border:"1px solid rgba(0,212,255,.12)",borderRadius:9,padding:"9px 12px"}}>
+                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
+                  <span style={{fontSize:12}}>{t?.emoji||"💬"}</span>
+                  <span style={{fontSize:10,color:"var(--c)",fontFamily:"monospace"}}>{r.date}</span>
+                  {r.blocked?<span style={{fontSize:9,color:"var(--gr)",background:"rgba(52,211,153,.1)",borderRadius:3,padding:"1px 5px",marginLeft:"auto"}}>✓ 阻斷</span>:<span style={{fontSize:9,color:"var(--mt)",marginLeft:"auto"}}>記錄</span>}
+                </div>
+                <div style={{fontSize:12,color:"var(--tx)",lineHeight:1.6}}>{r.aiInput}</div>
+              </div>;
+            })}
+            {app.records.filter(r=>r.aiInput).length>10&&<p style={{fontSize:11,color:"var(--mt)",textAlign:"center"}}>顯示最近10筆</p>}
+          </div>
+        </>}
         <div className="sh">⚖️ <span>正負能量對比</span></div>
         <div style={{display:"flex",gap:8,marginBottom:6}}>
           {[["var(--c)","rgba(0,212,255,.07)","rgba(0,212,255,.2)",totalBlocked,"負面阻斷"],["var(--gd)","rgba(245,158,11,.07)","rgba(245,158,11,.2)",app.assets.length,"正面資產"]].map(([tc,bg,bc,n,lb])=>(
@@ -793,6 +942,26 @@ export default function App() {
           <div style={{width:`${Math.min(totalBlocked/(totalBlocked+app.assets.length||1)*100,100)}%`,height:"100%",background:"var(--c)",borderRadius:4,transition:"width .6s"}}/>
         </div>
         <p style={{fontSize:10,color:"var(--mt)",textAlign:"center",marginTop:4}}>目標：正面資產累積 ≥ 阻斷次數</p>
+
+        {/* ── 備份 / 還原 ── */}
+        <div style={{marginTop:20,background:"rgba(255,255,255,.03)",border:"1px solid var(--bd)",borderRadius:13,padding:16,display:"flex",flexDirection:"column",gap:10}}>
+          <div className="sh" style={{marginBottom:0}}>🛡️ <span>資料備份 / 還原</span></div>
+          <p style={{fontSize:11,color:"var(--mt)",lineHeight:1.6}}>防止清除瀏覽器後資料消失。建議每週備份一次，存到手機相簿或 Google Drive。</p>
+          <div style={{display:"flex",gap:8}}>
+            <button onClick={backupData} style={{flex:1,padding:"11px 0",border:"none",borderRadius:11,background:"var(--c)",color:"#080d14",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"var(--font)"}}>
+              ⬇️ 下載備份 JSON
+            </button>
+            <label style={{flex:1,padding:"11px 0",border:"1px solid var(--bd)",borderRadius:11,background:"var(--sur2)",color:"var(--tx)",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:"var(--font)",textAlign:"center",display:"block"}}>
+              ⬆️ 還原備份
+              <input type="file" accept=".json" onChange={restoreData} style={{display:"none"}}/>
+            </label>
+          </div>
+          {restoreMsg&&<div style={{fontSize:12,color:restoreMsg.startsWith("✅")?"var(--gr)":"#f87171",background:restoreMsg.startsWith("✅")?"rgba(52,211,153,.1)":"rgba(248,113,113,.1)",border:`1px solid ${restoreMsg.startsWith("✅")?"rgba(52,211,153,.3)":"rgba(248,113,113,.3)"}`,borderRadius:8,padding:"8px 12px"}}>{restoreMsg}</div>}
+          <div style={{display:"flex",gap:6,alignItems:"flex-start"}}>
+            <span style={{fontSize:14}}>☁️</span>
+            <div style={{fontSize:11,color:"var(--mt)",lineHeight:1.6}}>阻斷記錄已自動備份到你的 <span style={{color:"var(--c)"}}>Google Sheets</span>，即使瀏覽器清除也安全。</div>
+          </div>
+        </div>
       </div>}
 
       {assetForm&&<AssetForm init={assetForm==="new"?null:assetForm} onSave={saveAsset} onClose={()=>setAssetForm(null)}/>}
