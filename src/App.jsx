@@ -586,13 +586,21 @@ export default function App() {
           {[...todayRec].reverse().map(r=>{
             const t=TRIGGERS.find(x=>x.id===r.trigger);
             const w=r.wisdomId!=null?allWisdom.find(x=>x.id===r.wisdomId):null;
-            return <div className="ri" key={r.id}>
+            return <div className="ri" key={r.id} style={{gap:8}}>
               <span style={{fontSize:16}}>{t?.emoji}</span>
               <div style={{flex:1}}>
                 <div style={{fontSize:12}}>{t?.label}</div>
                 {w&&<div style={{fontSize:10,color:"var(--p)",marginTop:1}}>💡 {w.title}</div>}
               </div>
               {r.blocked?<span className="badge g">✓ 阻斷</span>:<span className="badge">記錄</span>}
+              <button
+                className="xb red"
+                title="刪除此筆記錄"
+                onClick={()=>{
+                  if(window.confirm("確定刪除這筆記錄？"))
+                    setApp(d=>({...d,records:d.records.filter(x=>x.id!==r.id)}));
+                }}
+              >🗑</button>
             </div>;
           })}
         </>}
@@ -950,6 +958,7 @@ export default function App() {
                   <span style={{fontSize:12}}>{t?.emoji||"💬"}</span>
                   <span style={{fontSize:10,color:"var(--c)",fontFamily:"monospace"}}>{r.date}</span>
                   {r.blocked?<span style={{fontSize:9,color:"var(--gr)",background:"rgba(52,211,153,.1)",borderRadius:3,padding:"1px 5px",marginLeft:"auto"}}>✓ 阻斷</span>:<span style={{fontSize:9,color:"var(--mt)",marginLeft:"auto"}}>記錄</span>}
+                  <button className="xb red" title="刪除" onClick={()=>{if(window.confirm("確定刪除這筆記錄？"))setApp(d=>({...d,records:d.records.filter(x=>x.id!==r.id)}));}}>🗑</button>
                 </div>
                 <div style={{fontSize:12,color:"var(--tx)",lineHeight:1.6}}>{r.aiInput}</div>
               </div>;
