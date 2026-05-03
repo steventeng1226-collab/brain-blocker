@@ -291,6 +291,8 @@ export default function App() {
   const [aiLoading,setAiLoading]=useState(false);
   const [aiError,setAiError]=useState("");
   const [aiSelIdx,setAiSelIdx]=useState(null);
+  const [apiKey,setApiKey]=useState(()=>localStorage.getItem("bb-apikey")||"");
+  const [showKeyInput,setShowKeyInput]=useState(false);
   // 備份還原
   const [restoreMsg,setRestoreMsg]=useState("");
 
@@ -432,45 +434,30 @@ export default function App() {
 
   async function callAI() {
     if(!aiInput.trim()) return;
+    if(!apiKey.trim()){setAiError("⚠️ 請先設定 Anthropic API Key（見下方設定）");setShowKeyInput(true);return;}
     setAiLoading(true); setAiError(""); setAiPhrases([]); setAiSelIdx(null);
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method:"POST",
         headers:{
           "Content-Type":"application/json",
+          "x-api-key": apiKey.trim(),
           "anthropic-version":"2023-06-01",
           "anthropic-dangerous-direct-browser-access":"true"
         },
         body: JSON.stringify({
           model:"claude-sonnet-4-20250514",
           max_tokens:1000,
-          messages:[{role:"user", content:`
-你是一位認知行為治療師，專門幫助人阻斷負面情緒迴路。
-
-用戶當下感受：「${aiInput.trim()}」
-
-請生成「恰好5句」個人化阻斷語，幫助用戶在10秒內重新框架這個情緒。
-每句需採用不同風格，以下5種各用一次：
-1. 理性拆解（分析事件本質，與自我價值分離）
-2. 換框思考（從不同角度重新詮釋）
-3. 生理錨定（提醒回到身體感知、呼吸當下）
-4. 曠野視角（拉大時間或空間尺度看這件事）
-5. 行動導向（聚焦在下一個可控的行動）
-
-格式要求：
-- 只輸出JSON陣列，不要任何說明文字或markdown
-- 每句15-40字的中文，直接對用戶說話（用「你」）
-- 格式：[{"style":"理性拆解","text":"..."},{"style":"換框思考","text":"..."},{"style":"生理錨定","text":"..."},{"style":"曠野視角","text":"..."},{"style":"行動導向","text":"..."}]
-`}]
+          messages:[{role:"user", content:`你是一位認知行為治療師，專門幫助人阻斷負面情緒迴路。\n\n用戶當下感受：「${aiInput.trim()}」\n\n請生成「恰好5句」個人化阻斷語。每句採用不同風格，5種各用一次：\n1. 理性拆解\n2. 換框思考\n3. 生理錨定\n4. 曠野視角\n5. 行動導向\n\n只輸出JSON陣列，不要任何說明或markdown：\n[{"style":"理性拆解","text":"..."},{"style":"換框思考","text":"..."},{"style":"生理錨定","text":"..."},{"style":"曠野視角","text":"..."},{"style":"行動導向","text":"..."}]`}]
         })
       });
+      if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(`${res.status}: ${e?.error?.message||res.statusText}`);}
       const data = await res.json();
       const raw = data.content?.find(b=>b.type==="text")?.text || "[]";
       const clean = raw.replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(clean);
-      setAiPhrases(parsed);
+      setAiPhrases(JSON.parse(clean));
     } catch(e) {
-      setAiError("AI 連線失敗，請再試一次");
+      setAiError("❌ "+e.message);
     }
     setAiLoading(false);
   }
@@ -558,7 +545,7 @@ export default function App() {
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:22,filter:"drop-shadow(0 0 6px #00d4ff88)"}}>⚡</span>
           <div>
-            <div style={{fontSize:15,fontWeight:700}}>負面阻斷器</div>
+            <div style={{fontSize:15,fontWeight:700}}>負面阻斷器 <span style={{fontSize:11,color:"#00d4ff",background:"rgba(0,212,255,.12)",border:"1px solid rgba(0,212,255,.3)",borderRadius:5,padding:"1px 6px",fontFamily:"monospace"}}>v9</span></div>
             <div style={{fontSize:9,color:"var(--c)",fontFamily:"monospace",letterSpacing:".04em"}}>
               智慧錦囊 · 重寫神經路徑 · {allWisdom.length}條
             </div>
@@ -616,11 +603,32 @@ export default function App() {
         {flow==="idle" && <>
           {/* AI 自由輸入區塊 */}
           <div style={{background:"rgba(0,212,255,.04)",border:"1px solid rgba(0,212,255,.2)",borderRadius:13,padding:14,marginBottom:14,display:"flex",flexDirection:"column",gap:9}}>
-            <div style={{fontSize:12,fontWeight:700,color:"var(--c)",display:"flex",gap:6,alignItems:"center"}}>
-              <span>✍️</span><span>自由輸入當下感受，AI 即時阻斷</span>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#00d4ff",display:"flex",gap:6,alignItems:"center"}}>
+                <span>✍️</span><span>自由輸入當下感受，AI 即時阻斷</span>
+              </div>
+              <button onClick={()=>setShowKeyInput(v=>!v)} style={{background:"rgba(0,212,255,.1)",border:"1px solid rgba(0,212,255,.3)",borderRadius:7,padding:"3px 8px",fontSize:10,color:"#00d4ff",cursor:"pointer",fontFamily:"inherit"}}>
+                {apiKey?"🔑 已設定":"🔑 設定Key"}
+              </button>
             </div>
+            {showKeyInput&&<div style={{display:"flex",flexDirection:"column",gap:6,background:"rgba(0,0,0,.2)",borderRadius:9,padding:"10px 12px"}}>
+              <div style={{fontSize:10,color:"#64748b"}}>Anthropic API Key（存在本機，不會上傳）</div>
+              <div style={{display:"flex",gap:6}}>
+                <input
+                  type="password"
+                  placeholder="sk-ant-..."
+                  value={apiKey}
+                  onChange={e=>setApiKey(e.target.value)}
+                  style={{flex:1,background:"rgba(255,255,255,.06)",border:"1px solid #1e2d42",borderRadius:7,padding:"8px 10px",color:"#e2e8f0",fontSize:12,outline:"none",fontFamily:"monospace"}}
+                />
+                <button onClick={()=>{localStorage.setItem("bb-apikey",apiKey);setShowKeyInput(false);setAiError("");}} style={{padding:"8px 12px",border:"none",borderRadius:7,background:"#00d4ff",color:"#080d14",fontSize:12,fontWeight:700,cursor:"pointer",whiteSpace:"nowrap"}}>儲存</button>
+              </div>
+              <div style={{fontSize:10,color:"#64748b",lineHeight:1.6}}>
+                前往 <span style={{color:"#00d4ff"}}>console.anthropic.com</span> → API Keys → 建立新Key
+              </div>
+            </div>}
             <textarea
-              style={{background:"rgba(255,255,255,.04)",border:"1px solid var(--bd)",borderRadius:9,padding:"10px 12px",color:"var(--tx)",fontSize:13,lineHeight:1.6,resize:"none",height:72,outline:"none",fontFamily:"var(--font)"}}
+              style={{background:"rgba(255,255,255,.04)",border:"1px solid #1e2d42",borderRadius:9,padding:"10px 12px",color:"#e2e8f0",fontSize:13,lineHeight:1.6,resize:"none",height:72,outline:"none",fontFamily:"inherit"}}
               placeholder="例如：被主管當眾批評，覺得很羞愧，腦袋空白…"
               value={aiInput}
               onChange={e=>setAiInput(e.target.value)}
@@ -628,13 +636,13 @@ export default function App() {
             <button
               onClick={callAI}
               disabled={aiLoading||!aiInput.trim()}
-              style={{padding:"10px",border:"none",borderRadius:10,background:aiLoading||!aiInput.trim()?"rgba(0,212,255,.2)":"var(--c)",color:"#080d14",fontSize:13,fontWeight:700,cursor:aiLoading||!aiInput.trim()?"default":"pointer",fontFamily:"var(--font)",transition:"all .2s"}}
+              style={{padding:"10px",border:"none",borderRadius:10,background:aiLoading||!aiInput.trim()?"rgba(0,212,255,.2)":"#00d4ff",color:"#080d14",fontSize:13,fontWeight:700,cursor:aiLoading||!aiInput.trim()?"default":"pointer",fontFamily:"inherit",transition:"all .2s"}}
             >
               {aiLoading?"🤖 AI 分析中…":"🤖 AI 生成5句阻斷語"}
             </button>
-            {aiError&&<div style={{fontSize:11,color:"#f87171"}}>{aiError}</div>}
+            {aiError&&<div style={{fontSize:12,color:"#f87171",background:"rgba(248,113,113,.08)",borderRadius:7,padding:"8px 10px",lineHeight:1.5}}>{aiError}</div>}
             {aiPhrases.length>0&&<div style={{display:"flex",flexDirection:"column",gap:7}}>
-              <div style={{fontSize:10,color:"var(--mt)"}}>👇 點選一句進入第2層認知重導</div>
+              <div style={{fontSize:10,color:"#64748b"}}>👇 點選一句進入第2層認知重導</div>
               {aiPhrases.map((p,i)=>(
                 <div
                   key={i}
@@ -651,8 +659,8 @@ export default function App() {
                   }}
                   style={{background:aiSelIdx===i?"rgba(0,212,255,.12)":"rgba(255,255,255,.03)",border:`1px solid ${aiSelIdx===i?"rgba(0,212,255,.5)":"rgba(0,212,255,.15)"}`,borderRadius:9,padding:"10px 13px",cursor:"pointer",transition:"all .15s"}}
                 >
-                  <div style={{fontSize:9,color:"var(--c)",marginBottom:3,fontFamily:"monospace"}}>{p.style}</div>
-                  <div style={{fontSize:13,color:"var(--tx)",lineHeight:1.6}}>{p.text}</div>
+                  <div style={{fontSize:9,color:"#00d4ff",marginBottom:3,fontFamily:"monospace"}}>{p.style}</div>
+                  <div style={{fontSize:13,color:"#e2e8f0",lineHeight:1.6}}>{p.text}</div>
                 </div>
               ))}
             </div>}
