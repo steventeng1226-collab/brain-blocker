@@ -446,7 +446,7 @@ export default function App() {
           "anthropic-dangerous-direct-browser-access":"true"
         },
         body: JSON.stringify({
-          model:"claude-sonnet-4-20250514",
+          model:"claude-sonnet-4-6",
           max_tokens:1000,
           messages:[{role:"user", content:`你是一位認知行為治療師，專門幫助人阻斷負面情緒迴路。\n\n用戶當下感受：「${aiInput.trim()}」\n\n請生成「恰好5句」個人化阻斷語。每句採用不同風格，5種各用一次：\n1. 理性拆解\n2. 換框思考\n3. 生理錨定\n4. 曠野視角\n5. 行動導向\n\n只輸出JSON陣列，不要任何說明或markdown：\n[{"style":"理性拆解","text":"..."},{"style":"換框思考","text":"..."},{"style":"生理錨定","text":"..."},{"style":"曠野視角","text":"..."},{"style":"行動導向","text":"..."}]`}]
         })
