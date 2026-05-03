@@ -545,7 +545,7 @@ export default function App() {
         <div style={{display:"flex",gap:10,alignItems:"center"}}>
           <span style={{fontSize:22,filter:"drop-shadow(0 0 6px #00d4ff88)"}}>⚡</span>
           <div>
-            <div style={{fontSize:15,fontWeight:700}}>負面阻斷器 <span style={{fontSize:11,color:"#00d4ff",background:"rgba(0,212,255,.12)",border:"1px solid rgba(0,212,255,.3)",borderRadius:5,padding:"1px 6px",fontFamily:"monospace"}}>v9</span></div>
+            <div style={{fontSize:15,fontWeight:700}}>負面阻斷器 <span style={{fontSize:11,color:"#00d4ff",background:"rgba(0,212,255,.12)",border:"1px solid rgba(0,212,255,.3)",borderRadius:5,padding:"1px 6px",fontFamily:"monospace"}}>v10</span></div>
             <div style={{fontSize:9,color:"var(--c)",fontFamily:"monospace",letterSpacing:".04em"}}>
               智慧錦囊 · 重寫神經路徑 · {allWisdom.length}條
             </div>
@@ -642,7 +642,7 @@ export default function App() {
             </button>
             {aiError&&<div style={{fontSize:12,color:"#f87171",background:"rgba(248,113,113,.08)",borderRadius:7,padding:"8px 10px",lineHeight:1.5}}>{aiError}</div>}
             {aiPhrases.length>0&&<div style={{display:"flex",flexDirection:"column",gap:7}}>
-              <div style={{fontSize:10,color:"#64748b"}}>👇 點選一句進入第2層認知重導</div>
+              <div style={{fontSize:10,color:"#64748b"}}>👇 點選一句 → 選情境 → 進入完整三層阻斷</div>
               {aiPhrases.map((p,i)=>(
                 <div
                   key={i}
@@ -650,11 +650,10 @@ export default function App() {
                     const phrase={id:`ai-${i}`,cat:`🤖 ${p.style}`,title:p.text,content:p.text,star:"",custom:false};
                     setAiSelIdx(i);
                     setSelW(phrase);
-                    setTrig(TRIGGERS[0]);
                     setStateTag("");setStars(0);
                     setAIdx(Math.floor(Math.random()*app.actions.length));
                     setBreath(false);
-                    setFlow("step2");
+                    setFlow("ai-trig");
                     setTab("block");
                   }}
                   style={{background:aiSelIdx===i?"rgba(0,212,255,.12)":"rgba(255,255,255,.03)",border:`1px solid ${aiSelIdx===i?"rgba(0,212,255,.5)":"rgba(0,212,255,.15)"}`,borderRadius:9,padding:"10px 13px",cursor:"pointer",transition:"all .15s"}}
@@ -680,6 +679,23 @@ export default function App() {
             })}
           </div>
         </>}
+
+        {flow==="ai-trig"&&<div className="sc" style={{gap:12}}>
+          <div style={{background:"rgba(0,212,255,.06)",border:"1px solid rgba(0,212,255,.2)",borderRadius:11,padding:"11px 13px"}}>
+            <div style={{fontSize:10,color:"#00d4ff",marginBottom:4,fontFamily:"monospace"}}>🤖 已選擇 AI 阻斷語</div>
+            <div style={{fontSize:13,color:"#e2e8f0",lineHeight:1.6}}>{selW?.title}</div>
+          </div>
+          <div className="sh">⚡ <span>這次是哪種情緒觸發了你？</span></div>
+          <div className="tg">
+            {TRIGGERS.map(t=>(
+              <button key={t.id} className="tb" onClick={()=>{setTrig(t);setFlow("step1");}}>
+                <span style={{fontSize:22}}>{t.emoji}</span>
+                <div><div style={{fontSize:14,fontWeight:600,color:"var(--tx)",lineHeight:1.4}}>{t.label}</div></div>
+              </button>
+            ))}
+          </div>
+          <button className="sb" onClick={()=>{setFlow("idle");setSelW(null);setAiSelIdx(null);}}>← 取消，重選阻斷語</button>
+        </div>}
 
         {["step1","step2","step3"].includes(flow)&&(()=>{
           const step=flow==="step1"?1:flow==="step2"?2:3;
