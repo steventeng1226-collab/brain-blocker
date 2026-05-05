@@ -293,6 +293,7 @@ export default function App() {
   const [aiSelIdx,setAiSelIdx]=useState(null);
   const [apiKey,setApiKey]=useState(()=>localStorage.getItem("bb-apikey")||"");
   const [showKeyInput,setShowKeyInput]=useState(false);
+  const [showAllAi,setShowAllAi]=useState(false);
   // 備份還原
   const [restoreMsg,setRestoreMsg]=useState("");
 
@@ -950,21 +951,28 @@ export default function App() {
         {app.records.filter(r=>r.aiInput).length>0&&<>
           <div className="sh" style={{marginTop:4}}>🤖 <span>AI 阻斷心情紀錄</span></div>
           <p style={{fontSize:11,color:"var(--mt)",marginBottom:10}}>每一筆都是你真實情緒的快照，持續累積後可分析觸發模式</p>
-          <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
-            {[...app.records.filter(r=>r.aiInput)].reverse().slice(0,10).map(r=>{
-              const t=TRIGGERS.find(x=>x.id===r.trigger);
-              return <div key={r.id} style={{background:"rgba(0,212,255,.04)",border:"1px solid rgba(0,212,255,.12)",borderRadius:9,padding:"9px 12px"}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
-                  <span style={{fontSize:12}}>{t?.emoji||"💬"}</span>
-                  <span style={{fontSize:10,color:"var(--c)",fontFamily:"monospace"}}>{r.date}</span>
-                  {r.blocked?<span style={{fontSize:9,color:"var(--gr)",background:"rgba(52,211,153,.1)",borderRadius:3,padding:"1px 5px",marginLeft:"auto"}}>✓ 阻斷</span>:<span style={{fontSize:9,color:"var(--mt)",marginLeft:"auto"}}>記錄</span>}
-                  <button className="xb red" title="刪除" onClick={()=>{if(window.confirm("確定刪除這筆記錄？"))setApp(d=>({...d,records:d.records.filter(x=>x.id!==r.id)}));}}>🗑</button>
-                </div>
-                <div style={{fontSize:12,color:"var(--tx)",lineHeight:1.6}}>{r.aiInput}</div>
-              </div>;
-            })}
-            {app.records.filter(r=>r.aiInput).length>10&&<p style={{fontSize:11,color:"var(--mt)",textAlign:"center"}}>顯示最近10筆</p>}
-          </div>
+          {(()=>{
+            const aiRecs=[...app.records.filter(r=>r.aiInput)].reverse();
+            const visible=showAllAi?aiRecs:aiRecs.slice(0,10);
+            return <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:20}}>
+              {visible.map(r=>{
+                const t=TRIGGERS.find(x=>x.id===r.trigger);
+                return <div key={r.id} style={{background:"rgba(0,212,255,.04)",border:"1px solid rgba(0,212,255,.12)",borderRadius:9,padding:"9px 12px"}}>
+                  <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:4}}>
+                    <span style={{fontSize:12}}>{t?.emoji||"💬"}</span>
+                    <span style={{fontSize:10,color:"var(--c)",fontFamily:"monospace"}}>{r.date}</span>
+                    {r.blocked?<span style={{fontSize:9,color:"var(--gr)",background:"rgba(52,211,153,.1)",borderRadius:3,padding:"1px 5px",marginLeft:"auto"}}>✓ 阻斷</span>:<span style={{fontSize:9,color:"var(--mt)",marginLeft:"auto"}}>記錄</span>}
+                    <button className="xb red" title="刪除" onClick={()=>{if(window.confirm("確定刪除這筆記錄？"))setApp(d=>({...d,records:d.records.filter(x=>x.id!==r.id)}));}}>🗑</button>
+                  </div>
+                  <div style={{fontSize:12,color:"var(--tx)",lineHeight:1.6}}>{r.aiInput}</div>
+                </div>;
+              })}
+              {aiRecs.length>10&&<button
+                onClick={()=>setShowAllAi(v=>!v)}
+                style={{background:"rgba(0,212,255,.06)",border:"1px solid rgba(0,212,255,.2)",borderRadius:8,padding:"8px",fontSize:11,color:"var(--c)",cursor:"pointer",fontFamily:"inherit"}}
+              >{showAllAi?`▲ 收起（共${aiRecs.length}筆）`:`▼ 顯示全部 ${aiRecs.length} 筆`}</button>}
+            </div>;
+          })()}
         </>}
         <div className="sh">⚖️ <span>正負能量對比</span></div>
         <div style={{display:"flex",gap:8,marginBottom:6}}>
